@@ -53,14 +53,19 @@ h1 {
 }
 
 /* ===== CANVAS ===== */
+
 #gameCanvas {
   display: none;
+  width: 90vw;
+  max-width: 500px;
+  aspect-ratio: 1 / 1;   /* keeps square shape */
   background: linear-gradient(145deg, #1e293b, #0f172a);
   border-radius: 20px;
   box-shadow:
     0 0 30px rgba(0, 0, 0, 0.6),
     inset 0 0 15px rgba(255, 255, 255, 0.05);
 }
+
 
 /* ===== WIN MODAL ===== */
 #winModal {

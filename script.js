@@ -31,9 +31,9 @@ const mainMenuBtn = document.getElementById("mainMenuBtn");
 
 // ================= GAME CONSTANTS =================
 const SIZE = 6;
-const CELL = canvas.width / SIZE;
 
 // ================= GAME STATE =================
+let CELL;
 let currentPlayer = "fire";
 let grid = [];
 let movingBalls = [];
@@ -46,6 +46,7 @@ offlineBtn.onclick = () => {
   menu.style.display = "none";
   canvas.style.display = "block";
   resetGame();
+  resizeCanvas();
 };
 
 onlineBtn.onclick = () => {
@@ -68,6 +69,7 @@ socket.on("roleAssigned", (role) => {
   menu.style.display = "none";
   canvas.style.display = "block";
   resetGame();
+  resizeCanvas();
 });
 
 socket.on("roleTaken", () => {
@@ -108,6 +110,7 @@ mainMenuBtn.onclick = () => {
 };
 
 // ================= INITIALIZATION =================
+
 function initGrid() {
   for (let r = 0; r < SIZE; r++) {
     grid[r] = [];
@@ -116,6 +119,17 @@ function initGrid() {
     }
   }
 }
+
+function resizeCanvas() {
+  const size = canvas.clientWidth;
+
+  canvas.width = size;
+  canvas.height = size;
+
+  CELL = canvas.width / SIZE;
+}
+
+
 
 function resetGame() {
   gameOver = false;
@@ -161,6 +175,11 @@ canvas.addEventListener("click", (e) => {
   movesPlayed++;
   switchTurn();
 });
+
+window.addEventListener("resize", () => {
+  resizeCanvas();
+});
+
 
 // ================= GAME LOGIC =================
 function addEnergy(row, col, player) {

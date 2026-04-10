@@ -1,85 +1,207 @@
 const express = require("express");
+const mongoose = require("mongoose");
+const User = require("./models/User");
 const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const session = require("express-session");
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log(err));
+
+
+app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: "/auth/google/callback"
+},
+(accessToken, refreshToken, profile, done) => {
+  return done(null, profile);
+}));
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj, done) => done(null, obj));
 
 app.use(express.static(__dirname));
 
-// ===== GAME STATE =====
-let roles = {
-  fire: null,
-  ice: null
-};
 
-let currentTurn = "fire";
-let winCount = {}; // { socketId: number }
+
+app.get("/auth/google",
+  passport.authenticate("google", { scope: ["profile"] })
+);
+
+app.get("/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: "/" }),
+  (req, res) => {
+    res.redirect("/");
+  }
+);
+
+// ===== GAME STATE =====
+let rooms = {}; // { roomId: { players, currentTurn, rematchRequests } }
+
+function findOpponent(room, id) {
+  if (room.players.fire === id) return room.players.ice;
+  if (room.players.ice === id) return room.players.fire;
+  return null;
+}
 
 // ===== CONNECTION =====
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  let roomId = null;
 
-  // initialize win counter for this user
-  winCount[socket.id] = winCount[socket.id] || 0;
+  socket.on("rematchRequest", () => {
+  const room = rooms[roomId];
+if (!room) return;
+
+room.rematchRequests[socket.id] = true;
+
+const opponent = findOpponent(room, socket.id);
+if (!opponent) return;
+
+if (room.rematchRequests[opponent]) {
+  room.currentTurn = "fire";
+
+  io.to(roomId).emit("startRematch");
+
+  room.rematchRequests = {}; // 🔥 reset properly
+}
+});
+
+  console.log("User connected:", socket.id);
 
   // ===== ROLE SELECTION =====
   socket.on("chooseRole", (role) => {
     if (role !== "fire" && role !== "ice") return;
 
-    if (!roles[role]) {
-      roles[role] = socket.id;
-      socket.emit("roleAssigned", role);
-      io.emit("rolesUpdate", roles);
-    } else {
-      socket.emit("roleTaken");
+  // find available room
+  for (let id in rooms) {
+    const room = rooms[id];
+    if (!room.players[role]) {
+      roomId = id;
+      break;
     }
+  }
+
+  // if no room → create one
+  if (!roomId) {
+    roomId = "room_" + socket.id;
+    rooms[roomId] = {
+      players: { fire: null, ice: null },
+      currentTurn: "fire",
+      rematchRequests: {}
+    };
+  }
+
+  const room = rooms[roomId];
+
+  if (room.players.fire && room.players.ice) {
+    socket.emit("roomFull");
+    return;
+  }
+
+  if (!room.players[role]) {
+    room.players[role] = socket.id;
+    socket.join(roomId);
+    socket.emit("roleAssigned", role);
+  } else {
+    socket.emit("roleTaken");
+  }
   });
 
   // ===== MOVE HANDLING =====
   socket.on("move", ({ row, col, player }) => {
+    if (row < 0 || row >= 6 || col < 0 || col >= 6) return;
     // validate turn
-    if (player !== currentTurn) return;
+    const room = rooms[roomId];
+if (!room) return;
 
-    // validate player owns this role
-    if (roles[player] !== socket.id) return;
+if (player !== room.currentTurn) return;
+if (room.players[player] !== socket.id) return;
 
-    currentTurn = currentTurn === "fire" ? "ice" : "fire";
 
-    io.emit("syncMove", { row, col, player });
+    room.currentTurn = room.currentTurn === "fire" ? "ice" : "fire";
+
+io.to(roomId).emit("syncMove", { row, col, player, nextTurn: room.currentTurn });
   });
 
   // ===== WIN TRACKING =====
-  socket.on("gameWon", (winnerId) => {
-    if (winCount[winnerId] !== undefined) {
-      winCount[winnerId]++;
-      io.emit("updateScore", winCount);
+  socket.on("gameWon", async () => {
+
+  const room = rooms[roomId];
+if (!room) return;
+
+const opponentId = findOpponent(room, socket.id);
+if (!opponentId) return;
+  if (!socket.request.user) return;
+
+    const winner = await User.findOne({ googleId: socket.request.user?.id });
+
+    if (winner) {
+      winner.totalWins++;
+
+      const match = winner.matches.find(m => m.opponentId === opponentId);
+
+      let vsWins = 0;
+
+        if (match) {
+          match.wins++;
+          vsWins = match.wins;
+        } else {
+          winner.matches.push({ opponentId, wins: 1 });
+          vsWins = 1;
+        }
+
+        await winner.save();
+
+        socket.emit("playerStats", {
+          totalWins: winner.totalWins,
+          vsOpponentWins: vsWins
+  });
+      
+    
     }
+    
+
 
     // reset turn after game ends
-    currentTurn = "fire";
+if (room) room.currentTurn = "fire";
   });
 
   // ===== RESET GAME =====
   socket.on("resetGame", () => {
-    currentTurn = "fire";
-    io.emit("resetGame");
+    const room = rooms[roomId];
+if (room) room.currentTurn = "fire";
+    io.to(roomId).emit("resetGame");
   });
 
   // ===== DISCONNECT =====
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    const room = rooms[roomId];
+if (!room) return;
 
-    if (roles.fire === socket.id) roles.fire = null;
-    if (roles.ice === socket.id) roles.ice = null;
+if (room.players.fire === socket.id) room.players.fire = null;
+if (room.players.ice === socket.id) room.players.ice = null;
 
-    delete winCount[socket.id];
+// delete empty room
+if (!room.players.fire && !room.players.ice) {
+  delete rooms[roomId];
+  }
+});
 
-    currentTurn = "fire";
-
-    io.emit("rolesUpdate", roles);
-  });
 });
 
 // ===== START SERVER =====

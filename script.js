@@ -5,6 +5,19 @@ fetch("/")
   reconnection: true,
   reconnectionAttempts: 5,
 });
+let user = null;
+
+document.getElementById("guestBtn").onclick = () => {
+  user = {
+    id: "guest_" + Math.random(),
+    name: "Guest"
+  };
+  startGame();
+};
+
+document.getElementById("googleBtn").onclick = () => {
+  window.location.href = "/auth/google";
+};
 const roleSelect = document.getElementById("roleSelect");
 const chooseFire = document.getElementById("chooseFire");
 const chooseIce = document.getElementById("chooseIce");
@@ -40,6 +53,8 @@ let movingBalls = [];
 let rotationAngle = 0;
 let movesPlayed = 0;
 let gameOver = false;
+
+
 
 // ================= MENU BUTTONS =================
 offlineBtn.onclick = () => {
@@ -80,9 +95,10 @@ socket.on("roomFull", () => {
   alert("Room is full.");
 });
 
-socket.on("syncMove", ({ row, col, player }) => {
+socket.on("syncMove", ({ row, col, player, nextTurn }) => {
   addEnergy(row, col, player);
   movesPlayed++;
+  currentPlayer = nextTurn; // 🔥 FIX
   switchTurn();
 });
 
@@ -92,15 +108,27 @@ socket.on("updateScore", (scores) => {
   console.log("Win Stats:", winStats);
 });
 
+socket.on("playerStats", (data) => {
+document.getElementById("scoreBoard").textContent =
+  `Total Wins: ${data.totalWins} | Vs Opponent: ${data.vsOpponentWins}`;
+});
+
 
 socket.on("resetGame", () => {
   resetGame();
 });
 
+socket.on("startRematch", () => {
+  resetGame();
+});
 
 playAgainBtn.onclick = () => {
   winModal.classList.add("hidden");
   resetGame();
+};
+
+document.getElementById("rematchBtn").onclick = () => {
+  socket.emit("rematchRequest");
 };
 
 mainMenuBtn.onclick = () => {
@@ -130,6 +158,12 @@ function resizeCanvas() {
 }
 
 
+function startGame() {
+  menu.style.display = "none";
+  canvas.style.display = "block";
+
+  resetGame();
+}
 
 function resetGame() {
   gameOver = false;
@@ -152,9 +186,12 @@ canvas.addEventListener("click", (e) => {
   const y = e.clientY - rect.top;
 
   const row = Math.floor(y / CELL);
-  const col = Math.floor(x / CELL);
+const col = Math.floor(x / CELL);
 
-  if (onlineMode) {
+// ✅ FIRST check bounds
+if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
+
+if (onlineMode) {
   if (!myRole) return;
   if (myRole !== currentPlayer) return;
 
@@ -166,7 +203,6 @@ canvas.addEventListener("click", (e) => {
 
   return;
 }
-
   const cell = grid[row][col];
 
   if (cell.owner && cell.owner !== currentPlayer) return;
@@ -183,6 +219,9 @@ window.addEventListener("resize", () => {
 
 // ================= GAME LOGIC =================
 function addEnergy(row, col, player) {
+  if (gameOver) return; // ADD THIS LINE
+
+  if (!grid[row] || !grid[row][col]) return;
   const cell = grid[row][col];
   cell.count++;
   cell.owner = player;
@@ -207,6 +246,10 @@ function updateScoreBoard() {
     `Your Wins: ${winStats[socket.id] || 0}`;
 }
 
+function updateTurnUI() {
+  turnDisplay.textContent =
+    currentPlayer === "fire" ? "🔥 Fire Turn" : "❄ Ice Turn";
+}
 
 function explode(row, col, player) {
   const cx = col * CELL + CELL / 2;
@@ -299,7 +342,7 @@ function endGame(text) {
       (text.includes("Fire") && myRole === "fire") ||
       (text.includes("Ice") && myRole === "ice")
     ) {
-      socket.emit("gameWon", socket.id);
+      socket.emit("gameWon");
     }
   }
 }
@@ -357,7 +400,7 @@ function drawGrid() {
 
 
 function drawStaticBalls() {
-  rotationAngle += 0.02;
+  rotationAngle %= Math.PI * 2;
 
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
@@ -423,6 +466,7 @@ function loop() {
 }
 
 initGrid();
+resizeCanvas();
 loop();
 
 async function waitForServer() {

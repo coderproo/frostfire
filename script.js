@@ -339,6 +339,11 @@ function explode(row, col, player) {
 }
 
 function updateBalls() {
+  if (gameOver) {
+  movingBalls.length = 0;
+  return;
+}
+
   for (let i = movingBalls.length - 1; i >= 0; i--) {
     const b = movingBalls[i];
     b.x += b.vx;

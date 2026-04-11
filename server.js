@@ -67,6 +67,29 @@ function findOpponent(room, id) {
   return null;
 }
 
+function explodeCell(room, row, col, player) {
+  const dirs = [
+    { dx: 0, dy: -1 },
+    { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 },
+    { dx: 1, dy: 0 }
+  ];
+
+  room.grid[row][col].count = 0;
+  room.grid[row][col].owner = null;
+
+  dirs.forEach(d => {
+    const r = row + d.dy;
+    const c = col + d.dx;
+
+    if (r >= 0 && r < 6 && c >= 0 && c < 6) {
+      const cell = room.grid[r][c];
+      cell.count++;
+      cell.owner = player;
+    }
+  });
+}
+
 // ===== CONNECTION =====
 io.on("connection", (socket) => {
   let roomId = null;
@@ -159,6 +182,15 @@ socket.on("move", ({ row, col, player }) => {
   cell.owner = player;
   cell.count++;
 
+  const criticalMass =
+  4 -
+  (row === 0 || row === 5 ? 1 : 0) -
+  (col === 0 || col === 5 ? 1 : 0);
+
+if (cell.count >= criticalMass) {
+  explodeCell(room, row, col, player);
+}
+
   // ✅ switch turn
   room.currentTurn = room.currentTurn === "fire" ? "ice" : "fire";
 
@@ -166,7 +198,8 @@ socket.on("move", ({ row, col, player }) => {
     row,
     col,
     player,
-    nextTurn: room.currentTurn
+    nextTurn: room.currentTurn,
+    grid: room.grid
   });
 });
 

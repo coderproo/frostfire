@@ -1,3 +1,4 @@
+let user = null;
 fetch("/auth/me")
   .then(res => {
     if (!res.ok) throw new Error();
@@ -8,6 +9,7 @@ fetch("/auth/me")
 
     document.getElementById("googleBtn").style.display = "none";
     document.getElementById("guestBtn").textContent = "Continue";
+    document.getElementById("guestBtn").onclick = startGame;
 
   })
   .catch(() => {
@@ -20,7 +22,7 @@ fetch("/")
   reconnection: true,
   reconnectionAttempts: 5,
 });
-let user = null;
+
 
 document.getElementById("guestBtn").onclick = () => {
   user = {
@@ -110,11 +112,26 @@ socket.on("roomFull", () => {
   alert("Room is full.");
 });
 
-socket.on("syncMove", ({ row, col, player, nextTurn }) => {
-  addEnergy(row, col, player);
+socket.on("syncMove", ({ row, col, player, nextTurn, grid: serverGrid }) => {
+
+  // 🔥 REPLACE LOCAL GRID WITH SERVER GRID
+  grid = JSON.parse(JSON.stringify(serverGrid));
+
+  // optional: clear animations
+  movingBalls = [];
+
   movesPlayed++;
-  currentPlayer = nextTurn; // 🔥 FIX
-  switchTurn();
+
+  currentPlayer = nextTurn;
+  updateBoardGlow();
+});
+
+socket.on("gameOver", (winner) => {
+  if (winner === "fire") {
+    endGame("🔥 Fire Wins!");
+  } else {
+    endGame("❄ Ice Wins!");
+  }
 });
 
 socket.on("updateScore", (scores) => {
@@ -321,7 +338,7 @@ function updateBalls() {
   }
 
   if (movingBalls.length === 0 && !gameOver && movesPlayed > 1) {
-    checkWin();
+    
   }
 }
 
@@ -357,7 +374,7 @@ function endGame(text) {
       (text.includes("Fire") && myRole === "fire") ||
       (text.includes("Ice") && myRole === "ice")
     ) {
-      socket.emit("gameWon");
+      
     }
   }
 }

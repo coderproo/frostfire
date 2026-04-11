@@ -366,47 +366,49 @@ function updateBalls() {
   }
 
   if (movingBalls.length === 0 && !gameOver && movesPlayed > 1) {
-    
+    checkWin();
   }
 }
 
-// function checkWin() {
-//   if (movesPlayed < 2) return;
+function checkWin() {
+  if (movesPlayed < 2) return;
 
-//   let fire = 0;
-//   let ice = 0;
+  let fire = 0;
+  let ice = 0;
 
-//   for (let r = 0; r < SIZE; r++) {
-//     for (let c = 0; c < SIZE; c++) {
-//       if (grid[r][c].owner === "fire") fire++;
-//       if (grid[r][c].owner === "ice") ice++;
-//     }
-//   }
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (grid[r][c].owner === "fire") fire++;
+      if (grid[r][c].owner === "ice") ice++;
+    }
+  }
 
-//   if (fire > 0 && ice === 0) endGame("🔥 Fire Wins!");
-//   if (ice > 0 && fire === 0) endGame("❄ Ice Wins!");
-// }
+  if (fire > 0 && ice === 0) endGame("🔥 Fire Wins!");
+  if (ice > 0 && fire === 0) endGame("❄ Ice Wins!");
+}
 
 function endGame(text) {
+  // 🚨 STOP GAME COMPLETELY
   gameOver = true;
-  movingBalls.length = 0;
+  movingBalls = []; // stop all animations instantly
 
+  // 🎯 SHOW RESULT
   winnerText.textContent = text;
   winnerText.style.color =
     text.includes("Fire") ? "#ff4500" : "#00cfff";
 
   winModal.classList.remove("hidden");
 
+  // 🌐 ONLINE MODE → SEND WIN
   if (onlineMode && myRole) {
     if (
       (text.includes("Fire") && myRole === "fire") ||
       (text.includes("Ice") && myRole === "ice")
     ) {
-      
+      socket.emit("gameWon");
     }
   }
 }
-
 
 function switchTurn() {
   currentPlayer = currentPlayer === "fire" ? "ice" : "fire";

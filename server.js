@@ -5,6 +5,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
+app.set("trust proxy",1)
 const server = http.createServer(app);
 const io = new Server(server);
 const passport = require("passport");
@@ -23,7 +24,7 @@ app.use(passport.session());
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: "/auth/google/callback"
+  callbackURL: "https://frostfire.onrender.com/auth/google/callback"
 },
 (accessToken, refreshToken, profile, done) => {
   return done(null, profile);

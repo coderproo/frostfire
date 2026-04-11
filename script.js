@@ -1,3 +1,17 @@
+const guestBtn = document.getElementById("guestBtn");
+const googleBtn = document.getElementById("googleBtn");
+
+const loginScreen = document.getElementById("loginScreen");
+const menuScreen = document.getElementById("menuScreen");
+const gameScreen = document.getElementById("gameScreen");
+
+function showScreen(screen) {
+  loginScreen.classList.add("hidden");
+  menuScreen.classList.add("hidden");
+  gameScreen.classList.add("hidden");
+
+  screen.classList.remove("hidden");
+}
 let user = null;
 fetch("/auth/me")
   .then(res => {
@@ -6,12 +20,13 @@ fetch("/auth/me")
   })
   .then(data => {
     user = data.user;
-
-    document.getElementById("googleBtn").style.display = "none";
-    document.getElementById("guestBtn").textContent = "Continue";
-    document.getElementById("guestBtn").onclick = startGame;
-
+    showScreen(menuScreen);
   })
+
+    // document.getElementById("googleBtn").style.display = "none";
+    // document.getElementById("guestBtn").textContent = "Continue";
+    // document.getElementById("guestBtn").onclick = startGame;
+
   .catch(() => {
     console.log("Not logged in");
   });
@@ -24,15 +39,15 @@ fetch("/")
 });
 
 
-document.getElementById("guestBtn").onclick = () => {
+guestBtn.onclick = () => {
   user = {
     id: "guest_" + Math.random(),
     name: "Guest"
   };
-  startGame();
-};
 
-document.getElementById("googleBtn").onclick = () => {
+  showScreen(menuScreen);
+};
+googleBtn.onclick = () => {
   window.location.href = "/auth/google";
 };
 const roleSelect = document.getElementById("roleSelect");
@@ -48,7 +63,7 @@ let winStats = {};
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-const menu = document.getElementById("menu");
+//const menu = document.getElementById("menu");
 const turnDisplay = document.getElementById("turn");
 
 const winModal = document.getElementById("winModal");
@@ -75,8 +90,10 @@ let gameOver = false;
 
 // ================= MENU BUTTONS =================
 offlineBtn.onclick = () => {
-  menu.style.display = "none";
-  canvas.style.display = "block";
+  onlineMode = false;
+
+  showScreen(gameScreen);
+
   resetGame();
   resizeCanvas();
 };
@@ -98,8 +115,7 @@ chooseIce.onclick = () => {
 socket.on("roleAssigned", (role) => {
   myRole = role;
   roleSelect.classList.add("hidden");
-  menu.style.display = "none";
-  canvas.style.display = "block";
+  showScreen(gameScreen);
   resetGame();
   resizeCanvas();
 });
@@ -124,6 +140,7 @@ socket.on("syncMove", ({ row, col, player, nextTurn, grid: serverGrid }) => {
 
   currentPlayer = nextTurn;
   updateBoardGlow();
+  updateTurnUI();
 });
 
 socket.on("gameOver", (winner) => {
@@ -165,8 +182,9 @@ document.getElementById("rematchBtn").onclick = () => {
 
 mainMenuBtn.onclick = () => {
   winModal.classList.add("hidden");
-  canvas.style.display = "none";
-  menu.style.display = "flex";
+  showScreen(menuScreen);
+  // canvas.style.display = "none";
+  // menu.style.display = "flex";
 };
 
 // ================= INITIALIZATION =================
@@ -190,12 +208,12 @@ function resizeCanvas() {
 }
 
 
-function startGame() {
-  menu.style.display = "none";
-  canvas.style.display = "block";
+// function startGame() {
+//   menu.style.display = "none";
+//   canvas.style.display = "block";
 
-  resetGame();
-}
+//   resetGame();
+// }
 
 function resetGame() {
   gameOver = false;
@@ -205,6 +223,7 @@ function resetGame() {
   initGrid();
   winModal.classList.add("hidden");
   updateBoardGlow();
+  updateTurnUI();
 }
 
 
@@ -342,22 +361,22 @@ function updateBalls() {
   }
 }
 
-function checkWin() {
-  if (movesPlayed < 2) return;
+// function checkWin() {
+//   if (movesPlayed < 2) return;
 
-  let fire = 0;
-  let ice = 0;
+//   let fire = 0;
+//   let ice = 0;
 
-  for (let r = 0; r < SIZE; r++) {
-    for (let c = 0; c < SIZE; c++) {
-      if (grid[r][c].owner === "fire") fire++;
-      if (grid[r][c].owner === "ice") ice++;
-    }
-  }
+//   for (let r = 0; r < SIZE; r++) {
+//     for (let c = 0; c < SIZE; c++) {
+//       if (grid[r][c].owner === "fire") fire++;
+//       if (grid[r][c].owner === "ice") ice++;
+//     }
+//   }
 
-  if (fire > 0 && ice === 0) endGame("🔥 Fire Wins!");
-  if (ice > 0 && fire === 0) endGame("❄ Ice Wins!");
-}
+//   if (fire > 0 && ice === 0) endGame("🔥 Fire Wins!");
+//   if (ice > 0 && fire === 0) endGame("❄ Ice Wins!");
+// }
 
 function endGame(text) {
   gameOver = true;
@@ -501,19 +520,19 @@ initGrid();
 resizeCanvas();
 loop();
 
-async function waitForServer() {
-  let ready = false;
+// async function waitForServer() {
+//   let ready = false;
 
-  while (!ready) {
-    try {
-      await fetch("/");
-      ready = true;
-    } catch {
-      await new Promise(r => setTimeout(r, 1000));
-    }
-  }
+//   while (!ready) {
+//     try {
+//       await fetch("/");
+//       ready = true;
+//     } catch {
+//       await new Promise(r => setTimeout(r, 1000));
+//     }
+//   }
 
-  document.getElementById("loadingScreen").style.display = "none";
-}
+//   document.getElementById("loadingScreen").style.display = "none";
+// }
 
-waitForServer();
+// waitForServer();

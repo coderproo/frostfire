@@ -35,7 +35,9 @@ passport.deserializeUser((obj, done) => done(null, obj));
 
 app.use(express.static(__dirname));
 
-
+app.get("/", (req, res) => {
+  res.send("Server is alive 🚀");
+});
 
 app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile"] })
@@ -98,10 +100,13 @@ if (room.rematchRequests[opponent]) {
   if (!roomId) {
     roomId = "room_" + socket.id;
     rooms[roomId] = {
-      players: { fire: null, ice: null },
-      currentTurn: "fire",
-      rematchRequests: {}
-    };
+  players: { fire: null, ice: null },
+  currentTurn: "fire",
+  rematchRequests: {},
+  grid: Array(6).fill().map(() =>
+    Array(6).fill().map(() => ({ count: 0, owner: null }))
+  )
+};
   }
 
   const room = rooms[roomId];
@@ -121,20 +126,41 @@ if (room.rematchRequests[opponent]) {
   });
 
   // ===== MOVE HANDLING =====
-  socket.on("move", ({ row, col, player }) => {
-    if (row < 0 || row >= 6 || col < 0 || col >= 6) return;
-    // validate turn
-    const room = rooms[roomId];
-if (!room) return;
+socket.on("move", ({ row, col, player }) => {
 
-if (player !== room.currentTurn) return;
-if (room.players[player] !== socket.id) return;
+  const room = rooms[roomId];
+  if (!room) return;
 
+  // ❌ invalid cell
+  if (row < 0 || row >= 6 || col < 0 || col >= 6) return;
 
-    room.currentTurn = room.currentTurn === "fire" ? "ice" : "fire";
+  // ❌ not your turn
+  if (player !== room.currentTurn) return;
 
-io.to(roomId).emit("syncMove", { row, col, player, nextTurn: room.currentTurn });
+  // ❌ wrong player
+  if (room.players[player] !== socket.id) return;
+
+  if (!room.grid[row] || !room.grid[row][col]) return;
+
+  const cell = room.grid[row][col];
+
+  // ❌ enemy cell click
+  if (cell.owner && cell.owner !== player) return;
+
+  // ✅ update
+  cell.owner = player;
+  cell.count++;
+
+  // ✅ switch turn
+  room.currentTurn = room.currentTurn === "fire" ? "ice" : "fire";
+
+  io.to(roomId).emit("syncMove", {
+    row,
+    col,
+    player,
+    nextTurn: room.currentTurn
   });
+});
 
   // ===== WIN TRACKING =====
   socket.on("gameWon", async () => {

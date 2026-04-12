@@ -9,9 +9,10 @@ const loginScreen = document.getElementById("loginScreen");
 const menuScreen = document.getElementById("menuScreen");
 const gameScreen = document.getElementById("gameScreen");
 
-console.log("Login:", loginScreen);
+
 console.log("Menu:", menuScreen);
 console.log("Game:", gameScreen);
+console.log("Login:", loginScreen);
 
 function showScreen(screen) {
   loginScreen.classList.add("hidden");
@@ -20,6 +21,8 @@ function showScreen(screen) {
 
   screen.classList.remove("hidden");
 }
+
+
 let user = null;
 fetch("/auth/me")
   .then(res => {

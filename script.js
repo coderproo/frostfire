@@ -1,4 +1,5 @@
 
+
 fetch("/auth/me")
   .then(res => {
     if (!res.ok) throw new Error();

@@ -17,20 +17,9 @@ mongoose.connect(process.env.MONGO_URI)
   .catch(err => console.log(err));
 
 
-const sessionMiddleware = session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: true
-});
-
-app.use(sessionMiddleware);
+app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }));
 app.use(passport.initialize());
 app.use(passport.session());
-const sharedSession = require("express-socket.io-session");
-
-io.use(sharedSession(sessionMiddleware, {
-  autoSave: true
-}));
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
@@ -38,18 +27,7 @@ passport.use(new GoogleStrategy({
   callbackURL: "https://frostfire.onrender.com/auth/google/callback"
 },
 (accessToken, refreshToken, profile, done) => {
-  User.findOne({ googleId: profile.id }).then(existingUser => {
-    if (existingUser) return done(null, existingUser);
-
-    const newUser = new User({
-      googleId: profile.id,
-      name: profile.displayName,
-      totalWins: 0,
-      matches: []
-    });
-
-    newUser.save().then(user => done(null, user));
-  });
+  return done(null, profile);
 }));
 
 passport.serializeUser((user, done) => done(null, user));
@@ -86,46 +64,6 @@ let rooms = {}; // { roomId: { players, currentTurn, rematchRequests } }
 function findOpponent(room, id) {
   if (room.players.fire === id) return room.players.ice;
   if (room.players.ice === id) return room.players.fire;
-  return null;
-}
-
-function explodeCell(room, row, col, player) {
-  const dirs = [
-    { dx: 0, dy: -1 },
-    { dx: 0, dy: 1 },
-    { dx: -1, dy: 0 },
-    { dx: 1, dy: 0 }
-  ];
-
-  room.grid[row][col].count = 0;
-  room.grid[row][col].owner = null;
-
-  dirs.forEach(d => {
-    const r = row + d.dy;
-    const c = col + d.dx;
-
-    if (r >= 0 && r < 6 && c >= 0 && c < 6) {
-      const cell = room.grid[r][c];
-      cell.count++;
-      cell.owner = player;
-    }
-  });
-}
-
-function checkWinner(room) {
-  let fire = 0;
-  let ice = 0;
-
-  for (let r = 0; r < 6; r++) {
-    for (let c = 0; c < 6; c++) {
-      if (room.grid[r][c].owner === "fire") fire++;
-      if (room.grid[r][c].owner === "ice") ice++;
-    }
-  }
-
-  if (fire > 0 && ice === 0) return "fire";
-  if (ice > 0 && fire === 0) return "ice";
-
   return null;
 }
 
@@ -219,16 +157,7 @@ socket.on("move", ({ row, col, player }) => {
 
   // ✅ update
   cell.owner = player;
-  cell.count = (cell.count || 0) + 1;
-
-  const criticalMass =
-  4 -
-  (row === 0 || row === 5 ? 1 : 0) -
-  (col === 0 || col === 5 ? 1 : 0);
-
-if (cell.count >= criticalMass) {
-  explodeCell(room, row, col, player);
-}
+  cell.count++;
 
   // ✅ switch turn
   room.currentTurn = room.currentTurn === "fire" ? "ice" : "fire";
@@ -237,14 +166,8 @@ if (cell.count >= criticalMass) {
     row,
     col,
     player,
-    nextTurn: room.currentTurn,
-    grid: room.grid
+    nextTurn: room.currentTurn
   });
-  const winner = checkWinner(room);
-
-if (winner) {
-  io.to(roomId).emit("gameOver", winner);
-}
 });
 
   // ===== WIN TRACKING =====
@@ -292,18 +215,11 @@ if (room) room.currentTurn = "fire";
 
   // ===== RESET GAME =====
   socket.on("resetGame", () => {
-  const room = rooms[roomId];
-  if (!room) return;
+    const room = rooms[roomId];
+if (room) room.currentTurn = "fire";
+    io.to(roomId).emit("resetGame");
+  });
 
-  room.currentTurn = "fire";
-
-  // 🔥 ADD THIS (IMPORTANT)
-  room.grid = Array(6).fill().map(() =>
-    Array(6).fill().map(() => ({ count: 0, owner: null }))
-  );
-
-  io.to(roomId).emit("resetGame");
-});
   // ===== DISCONNECT =====
   socket.on("disconnect", () => {
     const room = rooms[roomId];

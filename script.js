@@ -1,29 +1,4 @@
-window.onload = () => {
-  showScreen(loginScreen);
-};
 
-const guestBtn = document.getElementById("guestBtn");
-const googleBtn = document.getElementById("googleBtn");
-
-const loginScreen = document.getElementById("loginScreen");
-const menuScreen = document.getElementById("menuScreen");
-const gameScreen = document.getElementById("gameScreen");
-
-
-console.log("Menu:", menuScreen);
-console.log("Game:", gameScreen);
-console.log("Login:", loginScreen);
-
-function showScreen(screen) {
-  loginScreen.classList.add("hidden");
-  menuScreen.classList.add("hidden");
-  gameScreen.classList.add("hidden");
-
-  screen.classList.remove("hidden");
-}
-
-
-let user = null;
 fetch("/auth/me")
   .then(res => {
     if (!res.ok) throw new Error();
@@ -31,16 +6,13 @@ fetch("/auth/me")
   })
   .then(data => {
     user = data.user;
-    showScreen(menuScreen);
+
+    document.getElementById("googleBtn").style.display = "none";
+    document.getElementById("guestBtn").textContent = "Continue";
+
   })
-
-    // document.getElementById("googleBtn").style.display = "none";
-    // document.getElementById("guestBtn").textContent = "Continue";
-    // document.getElementById("guestBtn").onclick = startGame;
-
   .catch(() => {
-    // console.log("Not logged in");
-    showScreen(loginScreen);
+    console.log("Not logged in");
   });
 fetch("/")
   .then(() => console.log("Server warm"))
@@ -49,17 +21,17 @@ fetch("/")
   reconnection: true,
   reconnectionAttempts: 5,
 });
+let user = null;
 
-
-guestBtn.onclick = () => {
+document.getElementById("guestBtn").onclick = () => {
   user = {
     id: "guest_" + Math.random(),
     name: "Guest"
   };
-
-  showScreen(menuScreen);
+  startGame();
 };
-googleBtn.onclick = () => {
+
+document.getElementById("googleBtn").onclick = () => {
   window.location.href = "/auth/google";
 };
 const roleSelect = document.getElementById("roleSelect");
@@ -75,7 +47,7 @@ let winStats = {};
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-//const menu = document.getElementById("menu");
+const menu = document.getElementById("menu");
 const turnDisplay = document.getElementById("turn");
 
 const winModal = document.getElementById("winModal");
@@ -102,10 +74,8 @@ let gameOver = false;
 
 // ================= MENU BUTTONS =================
 offlineBtn.onclick = () => {
-  onlineMode = false;
-
-  showScreen(gameScreen);
-
+  menu.style.display = "none";
+  canvas.style.display = "block";
   resetGame();
   resizeCanvas();
 };
@@ -127,7 +97,8 @@ chooseIce.onclick = () => {
 socket.on("roleAssigned", (role) => {
   myRole = role;
   roleSelect.classList.add("hidden");
-  showScreen(gameScreen);
+  menu.style.display = "none";
+  canvas.style.display = "block";
   resetGame();
   resizeCanvas();
 });
@@ -140,27 +111,11 @@ socket.on("roomFull", () => {
   alert("Room is full.");
 });
 
-socket.on("syncMove", ({ row, col, player, nextTurn, grid: serverGrid }) => {
-
-  // 🔥 REPLACE LOCAL GRID WITH SERVER GRID
-  grid = JSON.parse(JSON.stringify(serverGrid));
-
-  // optional: clear animations
-  movingBalls = [];
-
+socket.on("syncMove", ({ row, col, player, nextTurn }) => {
+  addEnergy(row, col, player);
   movesPlayed++;
-
-  currentPlayer = nextTurn;
-  updateBoardGlow();
-  updateTurnUI();
-});
-
-socket.on("gameOver", (winner) => {
-  if (winner === "fire") {
-    endGame("🔥 Fire Wins!");
-  } else {
-    endGame("❄ Ice Wins!");
-  }
+  currentPlayer = nextTurn; // 🔥 FIX
+  switchTurn();
 });
 
 socket.on("updateScore", (scores) => {
@@ -194,9 +149,8 @@ document.getElementById("rematchBtn").onclick = () => {
 
 mainMenuBtn.onclick = () => {
   winModal.classList.add("hidden");
-  showScreen(menuScreen);
-  // canvas.style.display = "none";
-  // menu.style.display = "flex";
+  canvas.style.display = "none";
+  menu.style.display = "flex";
 };
 
 // ================= INITIALIZATION =================
@@ -220,12 +174,12 @@ function resizeCanvas() {
 }
 
 
-// function startGame() {
-//   menu.style.display = "none";
-//   canvas.style.display = "block";
+function startGame() {
+  menu.style.display = "none";
+  canvas.style.display = "block";
 
-//   resetGame();
-// }
+  resetGame();
+}
 
 function resetGame() {
   gameOver = false;
@@ -235,7 +189,6 @@ function resetGame() {
   initGrid();
   winModal.classList.add("hidden");
   updateBoardGlow();
-  updateTurnUI();
 }
 
 
@@ -342,11 +295,6 @@ function explode(row, col, player) {
 }
 
 function updateBalls() {
-  if (gameOver) {
-  movingBalls.length = 0;
-  return;
-}
-
   for (let i = movingBalls.length - 1; i >= 0; i--) {
     const b = movingBalls[i];
     b.x += b.vx;
@@ -396,18 +344,15 @@ function checkWin() {
 }
 
 function endGame(text) {
-  // 🚨 STOP GAME COMPLETELY
   gameOver = true;
-  movingBalls = []; // stop all animations instantly
+  movingBalls.length = 0;
 
-  // 🎯 SHOW RESULT
   winnerText.textContent = text;
   winnerText.style.color =
     text.includes("Fire") ? "#ff4500" : "#00cfff";
 
   winModal.classList.remove("hidden");
 
-  // 🌐 ONLINE MODE → SEND WIN
   if (onlineMode && myRole) {
     if (
       (text.includes("Fire") && myRole === "fire") ||
@@ -417,6 +362,7 @@ function endGame(text) {
     }
   }
 }
+
 
 function switchTurn() {
   currentPlayer = currentPlayer === "fire" ? "ice" : "fire";
@@ -539,19 +485,19 @@ initGrid();
 resizeCanvas();
 loop();
 
-// async function waitForServer() {
-//   let ready = false;
+async function waitForServer() {
+  let ready = false;
 
-//   while (!ready) {
-//     try {
-//       await fetch("/");
-//       ready = true;
-//     } catch {
-//       await new Promise(r => setTimeout(r, 1000));
-//     }
-//   }
+  while (!ready) {
+    try {
+      await fetch("/");
+      ready = true;
+    } catch {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
 
-//   document.getElementById("loadingScreen").style.display = "none";
-// }
+  document.getElementById("loadingScreen").style.display = "none";
+}
 
-// waitForServer();
+waitForServer()

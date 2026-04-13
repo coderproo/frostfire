@@ -1,43 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Frostfire</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+
 <body>
+  
 
-<!-- 🔵 SCREEN 1: LOGIN -->
-<div id="loginScreen">
-  <h1>FROSTFIRE</h1>
-
-  <button id="googleBtn">Login with Google</button>
-  <button id="guestBtn">Play as Guest</button>
+<div id="loadingScreen">
+  <h1>🔥FROSTFIRE❄</h1>
+  <p>Warming up server...</p>
 </div>
 
-<!-- 🟢 SCREEN 2: MODE SELECT -->
-<div id="menuScreen" class="hidden">
-  <h2>Select Mode</h2>
-
-  <button id="offlineBtn">Play Offline</button>
-  <button id="onlineBtn">Play Online</button>
-
-  <div id="roleSelect" class="hidden">
-    <h3>Choose Role</h3>
-    <button id="chooseFire">🔥 Fire</button>
-    <button id="chooseIce">❄ Ice</button>
-  </div>
-</div>
-
-<!-- 🔴 SCREEN 3: GAME -->
-<div id="gameScreen" class="hidden">
+  <h1 id="title">FROSTFIRE</h1>
   <h2 id="turn"></h2>
   <h3 id="scoreBoard"></h3>
 
-  <!-- <canvas id="gameCanvas"></canvas> -->
 
-  <div id="winModal" class="hidden">
-    <h2 id="winnerText"></h2>
-    <button id="playAgainBtn">Play Again</button>
-    <button id="mainMenuBtn">Main Menu</button>
-    <button id="rematchBtn">Rematch</button>
-  </div>
+  <!-- MAIN MENU -->
+  <div id="menu">
+    <button class="menu-btn" id="offlineBtn">PLAY OFFLINE</button>
+    <button class="menu-btn" id="onlineBtn">PLAY ONLINE</button>
+    <div id="authMenu">
+  <button id="guestBtn">🎮 Play as Guest</button>
+<button id="googleBtn">🔗 Login with Google</button>
 </div>
+    <div id="roleSelect" class="hidden">
+      <h3>Choose Your Element</h3>
+      <button class="menu-btn" id="chooseFire">Choose Fire 🔥</button>
+      <button class="menu-btn" id="chooseIce">Choose Ice ❄</button>
+    </div>
+  </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="script.js"></script>
+
+  <!-- GAME CANVAS -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- WIN MODAL -->
+  <div id="winModal" class="hidden">
+    <div class="modal-content">
+      <h2 id="winnerText"></h2>
+      <div class="modal-buttons">
+        <button class="menu-btn" id="playAgainBtn">Play Again</button>
+        <button class="menu-btn" id="mainMenuBtn">Main Menu</button>
+        <button id="rematchBtn">Rematch</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
 
 </body>
+</html>

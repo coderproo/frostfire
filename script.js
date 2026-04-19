@@ -56,6 +56,7 @@ const offlineBtn = document.getElementById("offlineBtn");
 const onlineBtn = document.getElementById("onlineBtn");
 const playAgainBtn = document.getElementById("playAgainBtn");
 const mainMenuBtn = document.getElementById("mainMenuBtn");
+const rematchBTn = document.getElementById("rematchBtn");
 
 // ================= GAME CONSTANTS =================
 const SIZE = 6;
@@ -231,6 +232,12 @@ window.addEventListener("resize", () => {
   resizeCanvas();
 });
 
+
+rematchBTn.addEventListener("click", () => {
+  console.log("Rematch clicked");
+resetGame();
+winModal.classList.add("hidden");
+});
 
 // ================= GAME LOGIC =================
 function addEnergy(row, col, player) {

@@ -56,7 +56,7 @@ const offlineBtn = document.getElementById("offlineBtn");
 const onlineBtn = document.getElementById("onlineBtn");
 const playAgainBtn = document.getElementById("playAgainBtn");
 const mainMenuBtn = document.getElementById("mainMenuBtn");
-const rematchBTn = document.getElementById("rematchBtn");
+const rematchBtn = document.getElementById("rematchBtn");
 
 // ================= GAME CONSTANTS =================
 const SIZE = 6;
@@ -233,10 +233,11 @@ window.addEventListener("resize", () => {
 });
 
 
-rematchBTn.addEventListener("click", () => {
+rematchBtn.addEventListener("click", () => {
   console.log("Rematch clicked");
 resetGame();
 winModal.classList.add("hidden");
+// console.log(rematchBtn);
 });
 
 // ================= GAME LOGIC =================

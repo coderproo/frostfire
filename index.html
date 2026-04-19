@@ -27,6 +27,7 @@
     <div id="authMenu" class="auth-container">
   <button id="guestBtn" class="auth-btn">🎮 Play as Guest</button>
 <button id="googleBtn" class="auth-btn">🔗 Login with Google</button>
+<button id="createProfileBtn" class="auth-btn">✨ Create Profile</button>
 </div>
     <div id="roleSelect" class="hidden">
       <h3>Choose Your Element</h3>
@@ -34,7 +35,13 @@
       <button class="menu-btn" id="chooseIce">Choose Ice ❄</button>
     </div>
   </div>
-
+<div id="profileModal" class="hidden">
+  <div class="modal-content">
+    <h3>Create Profile</h3>
+    <input id="usernameInput" placeholder="Enter username" />
+    <button id="saveProfileBtn" class="menu-btn">Save</button>
+  </div>
+</div>
 
   <!-- GAME CANVAS -->
   <canvas id="gameCanvas"></canvas>

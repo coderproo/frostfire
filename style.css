@@ -185,7 +185,7 @@ h1 {
 #chooseIce:hover {
   box-shadow: 0 0 25px #00cfff;
 }
-.end-buttons {
+.modal-buttons {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -193,7 +193,7 @@ h1 {
 }
 
 @media (max-width: 600px) {
-  .end-buttons button {
+  .modal-buttons button {
     width: 90%;
   }
 }
